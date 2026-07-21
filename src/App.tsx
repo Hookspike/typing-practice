@@ -4,6 +4,7 @@ import { HomePage } from '@/pages/HomePage';
 import { PracticePage } from '@/pages/PracticePage';
 import { TestPage } from '@/pages/TestPage';
 import { HistoryPage } from '@/pages/HistoryPage';
+import { AchievementsPage } from '@/pages/AchievementsPage';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -18,6 +19,8 @@ function App() {
         return <TestPage />;
       case 'history':
         return <HistoryPage />;
+      case 'achievements':
+        return <AchievementsPage />;
       default:
         return <HomePage onNavigate={setCurrentPage} />;
     }
