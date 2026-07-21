@@ -5,9 +5,10 @@ interface TypingAreaProps {
   userInput: string;
   isActive: boolean;
   onKeyDown: (e: KeyboardEvent) => void;
+  onCompositionEnd: (e: CompositionEvent) => void;
 }
 
-export function TypingArea({ text, userInput, isActive, onKeyDown }: TypingAreaProps) {
+export function TypingArea({ text, userInput, isActive, onKeyDown, onCompositionEnd }: TypingAreaProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -18,9 +19,20 @@ export function TypingArea({ text, userInput, isActive, onKeyDown }: TypingAreaP
       onKeyDown(e);
     };
 
+    const handleCompositionEnd = (e: CompositionEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      onCompositionEnd(e);
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onKeyDown]);
+    window.addEventListener('compositionend', handleCompositionEnd);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('compositionend', handleCompositionEnd);
+    };
+  }, [onKeyDown, onCompositionEnd]);
 
   useEffect(() => {
     if (isActive && inputRef.current) {
@@ -58,6 +70,7 @@ export function TypingArea({ text, userInput, isActive, onKeyDown }: TypingAreaP
         autoCapitalize="off"
         spellCheck={false}
         readOnly
+        onCompositionEnd={onCompositionEnd}
       />
     </div>
   );
