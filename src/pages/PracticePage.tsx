@@ -3,6 +3,7 @@ import { TypingArea } from '@/components/TypingArea';
 import { StatsPanel } from '@/components/StatsPanel';
 import { KeyboardVisualization } from '@/components/KeyboardVisualization';
 import { ResultModal } from '@/components/ResultModal';
+import { ComboDisplay } from '@/components/ComboDisplay';
 import { useTyping } from '@/hooks/useTyping';
 import { 
   letterGroups, 
@@ -54,9 +55,10 @@ export function PracticePage() {
     currentDuration,
     wpm,
     accuracy,
+    combo,
     handleKeyDown,
     reset 
-  } = useTyping(practiceText, 'practice');
+  } = useTyping(practiceText, 'practice', undefined, language);
 
   const currentKey = practiceText[userInput.length]?.toLowerCase();
 
@@ -145,6 +147,7 @@ export function PracticePage() {
         duration={currentDuration}
         progress={progress}
       />
+      <ComboDisplay combo={combo} />
       <TypingArea 
         text={practiceText}
         userInput={userInput}
