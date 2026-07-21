@@ -44,6 +44,7 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (state.isFinished) return;
+    if (e.isComposing) return;
 
     if (!state.isActive) {
       setState(prev => ({
@@ -84,6 +85,39 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
           handleFinish();
         }
       }
+    }
+  }, [state, mode]);
+
+  const handleCompositionEnd = useCallback((e: CompositionEvent) => {
+    if (state.isFinished) return;
+
+    if (!state.isActive) {
+      setState(prev => ({
+        ...prev,
+        isActive: true,
+        startTime: Date.now(),
+      }));
+    }
+
+    const input = e.data || '';
+    for (let i = 0; i < input.length; i++) {
+      const char = input[i];
+      const nextChar = state.userInput.length + i;
+      if (nextChar < state.currentText.length) {
+        const isCorrect = char === state.currentText[nextChar];
+        setState(prev => ({
+          ...prev,
+          userInput: prev.userInput + char,
+          errors: isCorrect ? prev.errors : prev.errors + 1,
+          correctChars: isCorrect ? prev.correctChars + 1 : prev.correctChars,
+        }));
+        setCombo(prev => isCorrect ? prev + 1 : 0);
+      }
+    }
+
+    const newInputLength = state.userInput.length + input.length;
+    if (newInputLength >= state.currentText.length && mode === 'practice') {
+      handleFinish();
     }
   }, [state, mode]);
 
@@ -180,6 +214,7 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
     combo,
     newlyUnlocked,
     handleKeyDown,
+    handleCompositionEnd,
     reset,
   };
 }
