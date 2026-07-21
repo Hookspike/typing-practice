@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface TypingAreaProps {
   text: string;
@@ -9,7 +9,8 @@ interface TypingAreaProps {
 }
 
 export function TypingArea({ text, userInput, isActive, onKeyDown, onCompositionEnd }: TypingAreaProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [isComposing, setIsComposing] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -19,26 +20,53 @@ export function TypingArea({ text, userInput, isActive, onKeyDown, onComposition
       onKeyDown(e);
     };
 
-    const handleCompositionEnd = (e: CompositionEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-      onCompositionEnd(e);
-    };
-
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('compositionend', handleCompositionEnd);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('compositionend', handleCompositionEnd);
-    };
-  }, [onKeyDown, onCompositionEnd]);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onKeyDown]);
 
   useEffect(() => {
     if (isActive && inputRef.current) {
       inputRef.current.focus();
     }
   }, [isActive]);
+
+  useEffect(() => {
+    if (inputRef.current && !isComposing) {
+      inputRef.current.value = userInput;
+      inputRef.current.scrollTop = inputRef.current.scrollHeight;
+    }
+  }, [userInput, isComposing]);
+
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (!isComposing) {
+      const newValue = e.target.value;
+      const diff = newValue.length - userInput.length;
+      
+      if (diff > 0) {
+        const addedChars = newValue.slice(userInput.length);
+        const syntheticEvent = new KeyboardEvent('keydown', {
+          key: addedChars,
+          bubbles: true,
+        });
+        onKeyDown(syntheticEvent);
+      } else if (diff < 0) {
+        const syntheticEvent = new KeyboardEvent('keydown', {
+          key: 'Backspace',
+          bubbles: true,
+        });
+        onKeyDown(syntheticEvent);
+      }
+    }
+  };
+
+  const handleCompositionStart = () => {
+    setIsComposing(true);
+  };
+
+  const handleCompositionEnd = (e: React.CompositionEvent) => {
+    setIsComposing(false);
+    onCompositionEnd(e);
+  };
 
   const renderCharacter = (char: string, index: number) => {
     let className = 'char';
@@ -61,16 +89,17 @@ export function TypingArea({ text, userInput, isActive, onKeyDown, onComposition
       <div className="text-display">
         {text.split('').map((char, index) => renderCharacter(char, index))}
       </div>
-      <input
+      <textarea
         ref={inputRef}
-        type="text"
         className="hidden-input"
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
-        readOnly
-        onCompositionEnd={onCompositionEnd}
+        value={userInput}
+        onChange={handleInput}
+        onCompositionStart={handleCompositionStart}
+        onCompositionEnd={handleCompositionEnd}
       />
     </div>
   );
