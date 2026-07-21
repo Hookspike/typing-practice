@@ -20,6 +20,15 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
   const [newlyUnlocked, setNewlyUnlocked] = useState<string[]>([]);
   const timerRef = useRef<number | null>(null);
   const durationRef = useRef<number>(0);
+  const userInputRef = useRef('');
+  const correctCharsRef = useRef(0);
+  const errorsRef = useRef(0);
+
+  useEffect(() => {
+    userInputRef.current = state.userInput;
+    correctCharsRef.current = state.correctChars;
+    errorsRef.current = state.errors;
+  }, [state.userInput, state.correctChars, state.errors]);
 
   useEffect(() => {
     setState({ ...initialState, currentText: text });
@@ -91,6 +100,9 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
   const handleCompositionEnd = useCallback((e: CompositionEvent) => {
     if (state.isFinished) return;
 
+    const input = e.data || '';
+    if (!input) return;
+
     if (!state.isActive) {
       setState(prev => ({
         ...prev,
@@ -99,27 +111,39 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
       }));
     }
 
-    const input = e.data || '';
+    const currentInput = userInputRef.current;
+    const currentCorrectChars = correctCharsRef.current;
+    const currentErrors = errorsRef.current;
+    
+    let newInput = currentInput;
+    let newCorrectChars = currentCorrectChars;
+    let newErrors = currentErrors;
+    let lastCombo = combo;
+
     for (let i = 0; i < input.length; i++) {
       const char = input[i];
-      const nextChar = state.userInput.length + i;
-      if (nextChar < state.currentText.length) {
-        const isCorrect = char === state.currentText[nextChar];
-        setState(prev => ({
-          ...prev,
-          userInput: prev.userInput + char,
-          errors: isCorrect ? prev.errors : prev.errors + 1,
-          correctChars: isCorrect ? prev.correctChars + 1 : prev.correctChars,
-        }));
-        setCombo(prev => isCorrect ? prev + 1 : 0);
+      const nextCharIndex = currentInput.length + i;
+      if (nextCharIndex < state.currentText.length) {
+        const isCorrect = char === state.currentText[nextCharIndex];
+        newInput += char;
+        newCorrectChars = isCorrect ? newCorrectChars + 1 : newCorrectChars;
+        newErrors = isCorrect ? newErrors : newErrors + 1;
+        lastCombo = isCorrect ? lastCombo + 1 : 0;
       }
     }
 
-    const newInputLength = state.userInput.length + input.length;
-    if (newInputLength >= state.currentText.length && mode === 'practice') {
+    setState(prev => ({
+      ...prev,
+      userInput: newInput,
+      correctChars: newCorrectChars,
+      errors: newErrors,
+    }));
+    setCombo(lastCombo);
+
+    if (newInput.length >= state.currentText.length && mode === 'practice') {
       handleFinish();
     }
-  }, [state, mode]);
+  }, [state, mode, combo]);
 
   const handleFinish = useCallback(() => {
     if (timerRef.current) {
