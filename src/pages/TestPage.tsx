@@ -37,6 +37,7 @@ export function TestPage() {
     accuracy,
     combo,
     handleKeyDown,
+    handleCompositionEnd,
     reset 
   } = useTyping(testText, 'test', isStarted ? duration : undefined, language);
 
@@ -138,6 +139,7 @@ export function TestPage() {
             userInput={userInput}
             isActive={isActive}
             onKeyDown={handleKeyDown}
+            onCompositionEnd={handleCompositionEnd}
           />
           <div className="action-buttons">
             <button className="btn btn-secondary" onClick={handleReset}>
