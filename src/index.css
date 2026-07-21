@@ -274,6 +274,7 @@ body {
 
 .typing-area {
   margin-bottom: 2rem;
+  overflow: hidden;
 }
 
 .text-display {
@@ -285,6 +286,9 @@ body {
   min-height: 120px;
   border: 2px solid #e5e7eb;
   font-family: 'Consolas', 'Monaco', monospace;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  overflow: auto;
 }
 
 .text-display .char {
@@ -317,7 +321,8 @@ body {
   padding: 1.5rem;
   border-radius: 1rem;
   margin-bottom: 2rem;
-  display: inline-block;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
 .keyboard-row {
