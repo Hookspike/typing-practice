@@ -57,6 +57,7 @@ export function PracticePage() {
     accuracy,
     combo,
     handleKeyDown,
+    handleCompositionEnd,
     reset 
   } = useTyping(practiceText, 'practice', undefined, language);
 
@@ -153,6 +154,7 @@ export function PracticePage() {
         userInput={userInput}
         isActive={isActive}
         onKeyDown={handleKeyDown}
+        onCompositionEnd={handleCompositionEnd}
       />
       <KeyboardVisualization 
         currentKey={currentKey || ''}
