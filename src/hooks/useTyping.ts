@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TypingState } from '@/types';
 import { calculateWPM, calculateAccuracy, generateId, saveResult } from '@/utils/typingUtils';
+import { calculateXP, saveGameState, loadGameState, checkAchievements } from '@/utils/gameUtils';
 
 const initialState: TypingState = {
   currentText: '',
@@ -13,8 +14,10 @@ const initialState: TypingState = {
   correctChars: 0,
 };
 
-export function useTyping(text: string, mode: 'practice' | 'test', testDuration?: number) {
+export function useTyping(text: string, mode: 'practice' | 'test', testDuration?: number, language?: string) {
   const [state, setState] = useState<TypingState>(initialState);
+  const [combo, setCombo] = useState(0);
+  const [newlyUnlocked, setNewlyUnlocked] = useState<string[]>([]);
   const timerRef = useRef<number | null>(null);
   const durationRef = useRef<number>(0);
 
@@ -68,6 +71,8 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
           errors: isCorrect ? prev.errors : prev.errors + 1,
           correctChars: isCorrect ? prev.correctChars + 1 : prev.correctChars,
         }));
+        
+        setCombo(prev => isCorrect ? prev + 1 : 0);
 
         if (nextChar + 1 === state.currentText.length && mode === 'practice') {
           handleFinish();
@@ -99,6 +104,36 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
         timestamp: Date.now(),
         text: state.currentText.slice(0, 50),
       });
+
+      const earnedXP = calculateXP(wpm, accuracy, state.errors, mode);
+      const gameState = loadGameState();
+      
+      const updatedState = {
+        ...gameState,
+        xp: gameState.xp + earnedXP,
+        practiceCount: mode === 'practice' ? gameState.practiceCount + 1 : gameState.practiceCount,
+        testCount: mode === 'test' ? gameState.testCount + 1 : gameState.testCount,
+        maxCombo: Math.max(gameState.maxCombo, combo),
+        maxWPM: Math.max(gameState.maxWPM, wpm),
+        maxAccuracy: Math.max(gameState.maxAccuracy, accuracy),
+        chinesePracticeCount: language === 'chinese' && mode === 'practice' 
+          ? gameState.chinesePracticeCount + 1 
+          : gameState.chinesePracticeCount,
+        englishPracticeCount: language === 'english' && mode === 'practice' 
+          ? gameState.englishPracticeCount + 1 
+          : gameState.englishPracticeCount,
+      };
+
+      const unlocked = checkAchievements(updatedState, wpm, accuracy, combo, mode, language);
+      if (unlocked.length > 0) {
+        setNewlyUnlocked(unlocked.map(a => a.name));
+        updatedState.achievements = updatedState.achievements.map(a => {
+          const found = unlocked.find(u => u.id === a.id);
+          return found ? { ...a, unlocked: true, unlockedAt: Date.now() } : a;
+        });
+      }
+
+      saveGameState(updatedState);
     }
 
     setState(prev => ({
@@ -107,7 +142,9 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
       isActive: false,
       endTime,
     }));
-  }, [state, mode]);
+    
+    setCombo(0);
+  }, [state, mode, combo, language]);
 
   const reset = useCallback(() => {
     if (timerRef.current) {
@@ -134,6 +171,8 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
     currentDuration,
     wpm,
     accuracy,
+    combo,
+    newlyUnlocked,
     handleKeyDown,
     reset,
   };
