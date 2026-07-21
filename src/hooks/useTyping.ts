@@ -54,10 +54,16 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
     }
 
     if (e.key === 'Backspace') {
-      setState(prev => ({
-        ...prev,
-        userInput: prev.userInput.slice(0, -1),
-      }));
+      setState(prev => {
+        const newInput = prev.userInput.slice(0, -1);
+        const wasCorrect = prev.userInput.length > 0 && 
+          prev.userInput[prev.userInput.length - 1] === prev.currentText[prev.userInput.length - 1];
+        return {
+          ...prev,
+          userInput: newInput,
+          correctChars: wasCorrect ? Math.max(0, prev.correctChars - 1) : prev.correctChars,
+        };
+      });
       return;
     }
 
