@@ -20,15 +20,6 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
   const [newlyUnlocked, setNewlyUnlocked] = useState<string[]>([]);
   const timerRef = useRef<number | null>(null);
   const durationRef = useRef<number>(0);
-  const userInputRef = useRef('');
-  const correctCharsRef = useRef(0);
-  const errorsRef = useRef(0);
-
-  useEffect(() => {
-    userInputRef.current = state.userInput;
-    correctCharsRef.current = state.correctChars;
-    errorsRef.current = state.errors;
-  }, [state.userInput, state.correctChars, state.errors]);
 
   useEffect(() => {
     setState({ ...initialState, currentText: text });
@@ -51,6 +42,69 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
     }
   }, [state.isActive, state.isFinished, testDuration]);
 
+  const handleInput = useCallback((input: string) => {
+    if (state.isFinished) return;
+
+    if (!state.isActive) {
+      setState(prev => ({
+        ...prev,
+        isActive: true,
+        startTime: Date.now(),
+      }));
+    }
+
+    setState(prev => {
+      let newInput = prev.userInput;
+      let newCorrectChars = prev.correctChars;
+      let newErrors = prev.errors;
+      let newCombo = combo;
+
+      for (let i = 0; i < input.length; i++) {
+        const char = input[i];
+        const nextCharIndex = newInput.length;
+        
+        if (nextCharIndex >= prev.currentText.length) break;
+        
+        const isCorrect = char === prev.currentText[nextCharIndex];
+        newInput += char;
+        newCorrectChars = isCorrect ? newCorrectChars + 1 : newCorrectChars;
+        newErrors = isCorrect ? newErrors : newErrors + 1;
+        newCombo = isCorrect ? newCombo + 1 : 0;
+      }
+
+      setCombo(newCombo);
+
+      return {
+        ...prev,
+        userInput: newInput,
+        correctChars: newCorrectChars,
+        errors: newErrors,
+      };
+    });
+
+    const newInputLength = state.userInput.length + input.length;
+    if (newInputLength >= state.currentText.length && mode === 'practice') {
+      setTimeout(() => handleFinish(), 100);
+    }
+  }, [state, mode, combo]);
+
+  const handleBackspace = useCallback(() => {
+    if (state.isFinished) return;
+
+    setState(prev => {
+      if (prev.userInput.length === 0) return prev;
+      
+      const newInput = prev.userInput.slice(0, -1);
+      const wasCorrect = prev.userInput[prev.userInput.length - 1] === prev.currentText[prev.userInput.length - 1];
+      
+      return {
+        ...prev,
+        userInput: newInput,
+        correctChars: wasCorrect ? Math.max(0, prev.correctChars - 1) : prev.correctChars,
+      };
+    });
+  }, [state.isFinished]);
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (state.isFinished) return;
     if (e.isComposing) return;
@@ -64,86 +118,14 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
     }
 
     if (e.key === 'Backspace') {
-      setState(prev => {
-        const newInput = prev.userInput.slice(0, -1);
-        const wasCorrect = prev.userInput.length > 0 && 
-          prev.userInput[prev.userInput.length - 1] === prev.currentText[prev.userInput.length - 1];
-        return {
-          ...prev,
-          userInput: newInput,
-          correctChars: wasCorrect ? Math.max(0, prev.correctChars - 1) : prev.correctChars,
-        };
-      });
+      handleBackspace();
       return;
     }
 
     if (e.key.length === 1 || e.key === ' ') {
-      const nextChar = state.userInput.length;
-      if (nextChar < state.currentText.length) {
-        const isCorrect = e.key === state.currentText[nextChar];
-        setState(prev => ({
-          ...prev,
-          userInput: prev.userInput + e.key,
-          errors: isCorrect ? prev.errors : prev.errors + 1,
-          correctChars: isCorrect ? prev.correctChars + 1 : prev.correctChars,
-        }));
-        
-        setCombo(prev => isCorrect ? prev + 1 : 0);
-
-        if (nextChar + 1 === state.currentText.length && mode === 'practice') {
-          handleFinish();
-        }
-      }
+      handleInput(e.key);
     }
-  }, [state, mode]);
-
-  const handleCompositionEnd = useCallback((e: CompositionEvent) => {
-    if (state.isFinished) return;
-
-    const input = e.data || '';
-    if (!input) return;
-
-    if (!state.isActive) {
-      setState(prev => ({
-        ...prev,
-        isActive: true,
-        startTime: Date.now(),
-      }));
-    }
-
-    const currentInput = userInputRef.current;
-    const currentCorrectChars = correctCharsRef.current;
-    const currentErrors = errorsRef.current;
-    
-    let newInput = currentInput;
-    let newCorrectChars = currentCorrectChars;
-    let newErrors = currentErrors;
-    let lastCombo = combo;
-
-    for (let i = 0; i < input.length; i++) {
-      const char = input[i];
-      const nextCharIndex = currentInput.length + i;
-      if (nextCharIndex < state.currentText.length) {
-        const isCorrect = char === state.currentText[nextCharIndex];
-        newInput += char;
-        newCorrectChars = isCorrect ? newCorrectChars + 1 : newCorrectChars;
-        newErrors = isCorrect ? newErrors : newErrors + 1;
-        lastCombo = isCorrect ? lastCombo + 1 : 0;
-      }
-    }
-
-    setState(prev => ({
-      ...prev,
-      userInput: newInput,
-      correctChars: newCorrectChars,
-      errors: newErrors,
-    }));
-    setCombo(lastCombo);
-
-    if (newInput.length >= state.currentText.length && mode === 'practice') {
-      handleFinish();
-    }
-  }, [state, mode, combo]);
+  }, [state, handleBackspace, handleInput]);
 
   const handleFinish = useCallback(() => {
     if (timerRef.current) {
@@ -216,6 +198,7 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
     }
     durationRef.current = 0;
     setState({ ...initialState, currentText: text });
+    setCombo(0);
   }, [text]);
 
   const currentDuration = state.startTime 
@@ -237,8 +220,9 @@ export function useTyping(text: string, mode: 'practice' | 'test', testDuration?
     accuracy,
     combo,
     newlyUnlocked,
+    handleInput,
+    handleBackspace,
     handleKeyDown,
-    handleCompositionEnd,
     reset,
   };
 }
