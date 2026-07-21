@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { TypingArea } from '@/components/TypingArea';
 import { StatsPanel } from '@/components/StatsPanel';
 import { ResultModal } from '@/components/ResultModal';
+import { ComboDisplay } from '@/components/ComboDisplay';
 import { useTyping } from '@/hooks/useTyping';
 import { englishWords, chineseWords, englishParagraphs, chineseParagraphs, shuffleArray } from '@/data/practiceData';
 
@@ -34,9 +35,10 @@ export function TestPage() {
     currentDuration,
     wpm,
     accuracy,
+    combo,
     handleKeyDown,
     reset 
-  } = useTyping(testText, 'test', isStarted ? duration : undefined);
+  } = useTyping(testText, 'test', isStarted ? duration : undefined, language);
 
   const progress = testType === 'words' 
     ? Math.min((userInput.length / testText.length) * 100, 100)
@@ -130,6 +132,7 @@ export function TestPage() {
             duration={currentDuration}
             progress={progress}
           />
+          <ComboDisplay combo={combo} />
           <TypingArea 
             text={testText}
             userInput={userInput}
